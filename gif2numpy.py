@@ -1,8 +1,7 @@
 # coding=utf8
-
-import numpy as np
 import os
 from kaitaistruct import KaitaiStruct, KaitaiStream, BytesIO
+import numpy as np
 from enum import Enum
 from builtins import bytes
 
@@ -407,19 +406,6 @@ class BitReader(object):
         return bit_str
 
 
-def cvtColor(image):
-    "converts color from BGR to RGB and BGRA to RGBA and vice versa"
-    if len(image.shape) >= 3:
-        np8_image = image.astype(np.uint8)
-        if image.shape[2] == 3:
-            b, g, r = np.dsplit(np8_image, np8_image.shape[-1])
-            return np.dstack([r, g, b])
-        elif image.shape[2] == 4:
-            b, g, r, a = np.dsplit(np8_image, np8_image.shape[-1])
-            return np.dstack([r, g, b, a])
-    return image
-
-
 #================================================================
 # LZW compression algorithms
 #================================================================
@@ -504,6 +490,19 @@ def paste(mother, child, x, y):
     return mother
 
 
+def cvtColor(image):
+    "converts color from BGR to RGB and BGRA to RGBA and vice versa"
+    if len(image.shape) >= 3:
+        np8_image = image.astype(np.uint8)
+        if image.shape[2] == 3:
+            b, g, r = np.dsplit(np8_image, np8_image.shape[-1])
+            return np.dstack([r, g, b])
+        elif image.shape[2] == 4:
+            b, g, r, a = np.dsplit(np8_image, np8_image.shape[-1])
+            return np.dstack([r, g, b, a])
+    return image
+
+
 def convert(gif_filename, BGR2RGB=True):
     """converts an image specified by its filename gif_filename to a numpy image
        if BGR2RGB is True (default) there will also be a color conversion from BGR to RGB"""
@@ -549,15 +548,13 @@ def convert_raw(raw_bytes, BGR2RGB=True):
     # blocks
     image_specs["Data Blocks count"]  = len(data.blocks)
     
+
     # process frames
     frames = []
-    exts = []
     first_frame = None
 
+    extensions = []
     for i, block in enumerate(data.blocks):
-        if exts == []:
-            exts.append({})
-
         # process local image block
         if block.block_type == Gif.BlockType.local_image_descriptor:
             image_data = block.body.image_data
@@ -578,14 +575,18 @@ def convert_raw(raw_bytes, BGR2RGB=True):
 
             lzw_min = image_data.lzw_min_code_size
 
-            exts[-1]["left"] = left
-            exts[-1]["top"] = top
-            exts[-1]["width"] = width
-            exts[-1]["height"] = height
-            exts[-1]["flags"] = flags
-            exts[-1]["has_color_table"] = has_color_table
-            exts[-1]["local_color_table"] = local_color_table
-            exts[-1]["lzw_min"] = lzw_min
+            if extensions == []:
+                last_extension = {}
+                extensions.append(last_extension)
+
+            last_extension["left"] = left
+            last_extension["top"] = top
+            last_extension["width"] = width
+            last_extension["height"] = height
+            last_extension["flags"] = flags
+            last_extension["has_color_table"] = has_color_table
+            last_extension["local_color_table"] = local_color_table
+            last_extension["lzw_min"] = lzw_min
 
             # TODO make some function
             # process block bytes
@@ -627,7 +628,7 @@ def convert_raw(raw_bytes, BGR2RGB=True):
             else:
                 old_frame = frames[-1].copy()
                 # convert back?
-                transparent_idx = exts[-1]['transparent_idx']
+                transparent_idx = last_extension['transparent_idx']
                 if local_color_table:
                     if BGR2RGB:
                         transp_idx = local_color_table[transparent_idx][::-1] # RGB -> BGR
@@ -642,7 +643,7 @@ def convert_raw(raw_bytes, BGR2RGB=True):
                 transp_idx = np.array(transp_idx)
                 
                 # unknown do what?
-                new_frame = paste(first_frame.copy(), np_image, exts[-1]['left'], exts[-1]['top'])
+                new_frame = paste(first_frame.copy(), np_image, last_extension['left'], last_extension['top'])
 
                 f = np.all((new_frame == transp_idx), axis=-1)
 
@@ -669,12 +670,13 @@ def convert_raw(raw_bytes, BGR2RGB=True):
                 terminator = body.terminator
                 # current frame count                
                 frame_count = len(frames)
-                ext_dict = {
+                # TODO: use delay_time
+                extension = {
                     "block_size": block_size, "flags": flags, "delay_time": delay_time, "transparent_idx": transparent_idx, "terminator": terminator,
                     "frame_count": frame_count,
                 }
                 # add a new ext
-                exts.append(ext_dict)
+                extensions.append(extension)
             elif label == Gif.ExtensionLabel.application:
                 body = block.body.body
                 application_id = body.application_id
@@ -690,4 +692,4 @@ def convert_raw(raw_bytes, BGR2RGB=True):
         else: # data.blocks[i].block_type == Gif.BlockType.end_of_file
             pass
 
-    return frames, exts, image_specs
+    return frames, extensions, image_specs

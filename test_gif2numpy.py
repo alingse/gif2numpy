@@ -4,6 +4,7 @@ import cv2
 import time
 
 images = [
+    "Images/sea.gif",
     "Images/walk.gif", 
     "Images/hopper.gif", 
     "Images/audrey.gif", 
@@ -12,7 +13,7 @@ images = [
 ]
 
 for image in images:
-    frames, exts, image_specs = gif2numpy.convert(image)
+    frames, exts, image_specs = gif2numpy.convert(image, BGR2RGB=True)
     print()
     print("Image:", image)
     print()
