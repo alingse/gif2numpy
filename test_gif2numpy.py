@@ -4,6 +4,7 @@ import cv2
 import time
 
 images = [
+    "Images/orange.gif",
     "Images/sea.gif",
     "Images/walk.gif", 
     "Images/hopper.gif", 
@@ -22,5 +23,5 @@ for image in images:
     print("exts:", exts)
     print("image_specs:", image_specs)
     for i in range(len(frames)):
-        name = "{}_{}_.png".format(image, i)
+        name = "{}_{}_.jpg".format(image, i)
         cv2.imwrite(name, frames[i])
