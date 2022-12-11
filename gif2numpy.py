@@ -554,6 +554,7 @@ def convert_raw(raw_bytes, BGR2RGB=True):
     first_frame = None
 
     extensions = []
+    last_extension = None
     for i, block in enumerate(data.blocks):
         # process local image block
         if block.block_type == Gif.BlockType.local_image_descriptor:
@@ -578,6 +579,8 @@ def convert_raw(raw_bytes, BGR2RGB=True):
             if extensions == []:
                 last_extension = {}
                 extensions.append(last_extension)
+            else:
+                last_extension = extensions[-1]
 
             last_extension["left"] = left
             last_extension["top"] = top
@@ -585,7 +588,7 @@ def convert_raw(raw_bytes, BGR2RGB=True):
             last_extension["height"] = height
             last_extension["flags"] = flags
             last_extension["has_color_table"] = has_color_table
-            last_extension["local_color_table"] = local_color_table
+            # last_extension["local_color_table"] = local_color_table
             last_extension["lzw_min"] = lzw_min
 
             # TODO make some function
